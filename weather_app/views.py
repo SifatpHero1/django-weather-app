@@ -4,8 +4,9 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
-from .forms import RegisterForm, LoginForm, AddCityForm, SettingsForm
-from .models import City, WeatherData, UserPreference
+from django.utils import timezone
+from .forms import RegisterForm, LoginForm, AddCityForm, SettingsForm, AlertForm
+from .models import City, WeatherData, UserPreference, WeatherAlert
 from .services import WeatherService
 import json
 
@@ -68,9 +69,14 @@ def dashboard(request):
                 'unit': preference.temperature_unit,
             })
 
+    # Get recent alerts from session
+    recent_alerts = request.session.pop('recent_alerts', [])
+
     context = {
         'weather_data': weather_data,
         'has_cities': cities.exists(),
+        'recent_alerts': recent_alerts,
+        'alerts_enabled': preference.email_notifications or WeatherAlert.objects.filter(user=request.user, is_active=True).exists()
     }
     return render(request, 'dashboard.html', context)
 
@@ -145,6 +151,50 @@ def remove_city(request, city_id):
     return redirect('dashboard')
 
 
+def check_alerts_for_city(request, city, weather):
+    """Check if any alerts are triggered for a city's weather"""
+    alerts = WeatherAlert.objects.filter(city=city, is_active=True)
+    
+    for alert in alerts:
+        triggered = False
+        alert_type = alert.alert_type
+        threshold = alert.threshold_value
+        
+        if alert_type == 'temp_above' and weather.temperature > threshold:
+            triggered = True
+        elif alert_type == 'temp_below' and weather.temperature < threshold:
+            triggered = True
+        elif alert_type == 'humidity_above' and weather.humidity > threshold:
+            triggered = True
+        elif alert_type == 'humidity_below' and weather.humidity < threshold:
+            triggered = True
+        elif alert_type == 'wind_above' and weather.wind_speed > threshold:
+            triggered = True
+        elif alert_type == 'pressure_above' and weather.pressure > threshold:
+            triggered = True
+        elif alert_type == 'pressure_below' and weather.pressure < threshold:
+            triggered = True
+        
+        if triggered:
+            alert.last_triggered = timezone.now()
+            alert.save()
+            # Store alert notification in session
+            if 'recent_alerts' not in request.session:
+                request.session['recent_alerts'] = []
+            request.session['recent_alerts'].append({
+                'city': city.name,
+                'type': alert.get_alert_type_display(),
+                'threshold': threshold,
+                'current_value': getattr(weather, {
+                    'temp_above': 'temperature', 'temp_below': 'temperature',
+                    'humidity_above': 'humidity', 'humidity_below': 'humidity',
+                    'wind_above': 'wind_speed', 'pressure_above': 'pressure',
+                    'pressure_below': 'pressure'
+                }[alert_type])
+            })
+            request.session.modified = True
+
+
 @login_required
 def refresh_weather(request, city_id):
     """AJAX endpoint to refresh weather for a specific city"""
@@ -167,6 +217,10 @@ def refresh_weather(request, city_id):
                 'icon_code': result['icon_code'],
             }
         )
+        
+        # Check for triggered alerts
+        check_alerts_for_city(request, city, weather)
+        
         return JsonResponse({'success': True, 'message': 'Weather updated'})
     return JsonResponse({'success': False, 'message': 'Failed to fetch weather'}, status=400)
 
@@ -196,3 +250,123 @@ def get_wind_direction(degrees):
                   'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
     index = round(degrees / (360 / len(directions))) % len(directions)
     return directions[index]
+
+
+def check_alerts_for_city(request, city, weather):
+    """Check if any alerts are triggered for a city's weather"""
+    alerts = WeatherAlert.objects.filter(city=city, is_active=True)
+    
+    for alert in alerts:
+        triggered = False
+        alert_type = alert.alert_type
+        threshold = alert.threshold_value
+        
+        if alert_type == 'temp_above' and weather.temperature > threshold:
+            triggered = True
+        elif alert_type == 'temp_below' and weather.temperature < threshold:
+            triggered = True
+        elif alert_type == 'humidity_above' and weather.humidity > threshold:
+            triggered = True
+        elif alert_type == 'humidity_below' and weather.humidity < threshold:
+            triggered = True
+        elif alert_type == 'wind_above' and weather.wind_speed > threshold:
+            triggered = True
+        elif alert_type == 'pressure_above' and weather.pressure > threshold:
+            triggered = True
+        elif alert_type == 'pressure_below' and weather.pressure < threshold:
+            triggered = True
+        
+        if triggered:
+            alert.last_triggered = timezone.now()
+            alert.save()
+            if 'recent_alerts' not in request.session:
+                request.session['recent_alerts'] = []
+            request.session['recent_alerts'].append({
+                'city': city.name,
+                'type': alert.get_alert_type_display(),
+                'threshold': threshold,
+                'current_value': getattr(weather, {
+                    'temp_above': 'temperature', 'temp_below': 'temperature',
+                    'humidity_above': 'humidity', 'humidity_below': 'humidity',
+                    'wind_above': 'wind_speed', 'pressure_above': 'pressure',
+                    'pressure_below': 'pressure'
+                }[alert_type]),
+                'timestamp': timezone.now().isoformat()
+            })
+            request.session.modified = True
+
+
+@login_required
+def refresh_weather(request, city_id):
+    """AJAX endpoint to refresh weather for a specific city"""
+    city = get_object_or_404(City, id=city_id, user=request.user)
+    service = WeatherService()
+    result = service.get_weather_for_city(city.name, city.country_code)
+
+    if result:
+        weather, created = WeatherData.objects.update_or_create(
+            city=city,
+            defaults={
+                'temperature': result['temperature'],
+                'feels_like': result['feels_like'],
+                'humidity': result['humidity'],
+                'pressure': result['pressure'],
+                'wind_speed': result['wind_speed'],
+                'wind_deg': result['wind_deg'],
+                'description': result['description'],
+                'icon_code': result['icon_code'],
+            }
+        )
+        check_alerts_for_city(request, city, weather)
+        return JsonResponse({'success': True, 'message': 'Weather updated'})
+    return JsonResponse({'success': False, 'message': 'Failed to fetch weather'}, status=400)
+
+
+@login_required
+def alerts_view(request):
+    """View and manage weather alerts"""
+    alerts = WeatherAlert.objects.filter(user=request.user).select_related('city')
+    
+    if request.method == 'POST':
+        form = AlertForm(request.POST, user=request.user)
+        if form.is_valid():
+            city_name = form.cleaned_data['city_name']
+            city = City.objects.get(user=request.user, name__iexact=city_name)
+            
+            WeatherAlert.objects.create(
+                user=request.user,
+                city=city,
+                alert_type=form.cleaned_data['alert_type'],
+                threshold_value=form.cleaned_data['threshold_value']
+            )
+            messages.success(request, f'Alert created for {city.name}!')
+            return redirect('alerts')
+    else:
+        form = AlertForm(user=request.user)
+
+    context = {
+        'alerts': alerts,
+        'form': form,
+        'alert_types': WeatherAlert.ALERT_TYPES
+    }
+    return render(request, 'alerts.html', context)
+
+
+@require_POST
+@login_required
+def delete_alert(request, alert_id):
+    """Delete a weather alert"""
+    alert = get_object_or_404(WeatherAlert, id=alert_id, user=request.user)
+    alert.delete()
+    messages.success(request, 'Alert deleted successfully.')
+    return redirect('alerts')
+
+
+@require_POST
+@login_required
+def toggle_alert(request, alert_id):
+    """Toggle alert active status"""
+    alert = get_object_or_404(WeatherAlert, id=alert_id, user=request.user)
+    alert.is_active = not alert.is_active
+    alert.save()
+    return redirect('alerts')

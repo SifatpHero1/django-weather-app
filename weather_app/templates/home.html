@@ -29,21 +29,21 @@
 
     <!-- Features -->
     <div class="grid md:grid-cols-3 gap-6 mt-20 max-w-5xl mx-auto">
-        <div class="glass rounded-2xl p-6 text-white">
+        <a href="{% url 'dashboard' %}" class="glass rounded-2xl p-6 text-white hover:bg-white/20 transition cursor-pointer block">
             <i class="fas fa-globe-americas text-4xl mb-4"></i>
             <h3 class="text-xl font-bold mb-2">Global Coverage</h3>
-            <p class="text-white/70">Track weather in any city worldwide with instant updates.</p>
-        </div>
-        <div class="glass rounded-2xl p-6 text-white">
+            <p class="text-white/70">View weather in all your tracked cities worldwide.</p>
+        </a>
+        <a href="{% url 'alerts' %}" class="glass rounded-2xl p-6 text-white hover:bg-white/20 transition cursor-pointer block">
             <i class="fas fa-bell text-4xl mb-4"></i>
             <h3 class="text-xl font-bold mb-2">Smart Alerts</h3>
             <p class="text-white/70">Get notified about weather changes that matter to you.</p>
-        </div>
-        <div class="glass rounded-2xl p-6 text-white">
+        </a>
+        <a href="{% url 'settings' %}" class="glass rounded-2xl p-6 text-white hover:bg-white/20 transition cursor-pointer block">
             <i class="fas fa-user-circle text-4xl mb-4"></i>
             <h3 class="text-xl font-bold mb-2">Personalized</h3>
-            <p class="text-white/70">Customize units, themes, and favorite locations.</p>
-        </div>
+            <p class="text-white/70">Customize units, alerts, and preferences.</p>
+        </a>
     </div>
 </div>
 {% endblock %}

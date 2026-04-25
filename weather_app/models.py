@@ -49,6 +49,35 @@ class UserPreference(models.Model):
     ])
     auto_refresh = models.BooleanField(default=True)
     refresh_interval = models.IntegerField(default=30, help_text="Refresh interval in minutes")
+    email_notifications = models.BooleanField(default=True, help_text="Receive email alerts")
+    temperature_alert_threshold = models.FloatField(default=None, blank=True, null=True, help_text="Alert if temperature exceeds this value (Celsius)")
 
     def __str__(self):
         return f"{self.user.username} preferences"
+
+
+class WeatherAlert(models.Model):
+    """User-defined weather alerts"""
+    ALERT_TYPES = [
+        ('temp_above', 'Temperature Above'),
+        ('temp_below', 'Temperature Below'),
+        ('humidity_above', 'Humidity Above'),
+        ('humidity_below', 'Humidity Below'),
+        ('wind_above', 'Wind Speed Above'),
+        ('pressure_above', 'Pressure Above'),
+        ('pressure_below', 'Pressure Below'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='alerts')
+    city = models.ForeignKey(City, on_delete=models.CASCADE, related_name='alerts')
+    alert_type = models.CharField(max_length=20, choices=ALERT_TYPES)
+    threshold_value = models.FloatField(help_text="Threshold value for the alert")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_triggered = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.alert_type} {self.threshold_value} for {self.city.name}"

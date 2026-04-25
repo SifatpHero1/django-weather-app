@@ -11,4 +11,7 @@ urlpatterns = [
     path('remove_city/<int:city_id>/', views.remove_city, name='remove_city'),
     path('refresh_weather/<int:city_id>/', views.refresh_weather, name='refresh_weather'),
     path('settings/', views.settings_view, name='settings'),
+    path('alerts/', views.alerts_view, name='alerts'),
+    path('alerts/delete/<int:alert_id>/', views.delete_alert, name='delete_alert'),
+    path('alerts/toggle/<int:alert_id>/', views.toggle_alert, name='toggle_alert'),
 ]

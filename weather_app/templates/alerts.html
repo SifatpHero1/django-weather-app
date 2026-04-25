@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block title %}Smart Alerts - WeatherApp{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-8">
+    <div class="glass rounded-2xl p-8 shadow-2xl">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <i class="fas fa-bell text-5xl text-white mb-4"></i>
+                <h1 class="text-2xl font-bold text-white">Smart Alerts</h1>
+                <p class="text-white/70 mt-2">Get notified when weather conditions meet your criteria</p>
+            </div>
+            <a href="{% url 'dashboard' %}" class="bg-white/10 text-white px-4 py-2 rounded-lg hover:bg-white/20 transition">
+                <i class="fas fa-arrow-left mr-2"></i> Back to Dashboard
+            </a>
+        </div>
+
+        <!-- Alert Form -->
+        <div class="mb-8 p-6 bg-white/5 rounded-xl border border-white/10">
+            <h2 class="text-xl font-bold text-white mb-4">Create New Alert</h2>
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                
+                <div>
+                    <label class="block text-white/80 text-sm font-medium mb-2">
+                        <i class="fas fa-map-marker-alt mr-2"></i>City
+                    </label>
+                    {{ form.city }}
+                    <p class="text-white/50 text-xs mt-1">City must be added to your dashboard first</p>
+                </div>
+
+                <div>
+                    <label class="block text-white/80 text-sm font-medium mb-2">
+                        <i class="fas fa-flag mr-2"></i>Alert Type
+                    </label>
+                    {{ form.alert_type }}
+                </div>
+
+                <div>
+                    <label class="block text-white/80 text-sm font-medium mb-2">
+                        <i class="fas fa-thermometer-half mr-2"></i>Threshold Value
+                    </label>
+                    {{ form.threshold_value }}
+                    <p class="text-white/50 text-xs mt-1">
+                        Examples: Temperature above 35°C, Humidity below 30%, Wind above 50 km/h
+                    </p>
+                </div>
+
+                <button type="submit" class="w-full bg-white text-purple-600 py-3 rounded-xl font-semibold hover:bg-white/90 transition shadow-lg">
+                    <i class="fas fa-plus-circle mr-2"></i> Create Alert
+                </button>
+            </form>
+        </div>
+
+        <!-- Active Alerts -->
+        <div>
+            <h2 class="text-xl font-bold text-white mb-4">
+                <i class="fas fa-list-ul mr-2"></i>Your Alerts ({{ alerts.count }})
+            </h2>
+            
+            {% if alerts %}
+                <div class="space-y-3">
+                    {% for alert in alerts %}
+                        <div class="glass rounded-xl p-4 flex justify-between items-center {% if not alert.is_active %}opacity-50{% endif %}">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="text-white font-semibold">{{ alert.city.name }}, {{ alert.city.country_code }}</span>
+                                    <span class="px-2 py-1 bg-purple-500/30 text-purple-200 text-xs rounded-full">
+                                        {{ alert.get_alert_type_display }}
+                                    </span>
+                                    {% if alert.last_triggered %}
+                                        <span class="px-2 py-1 bg-green-500/30 text-green-200 text-xs rounded-full">
+                                            Triggered {{ alert.last_triggered|timesince }} ago
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <p class="text-white/70 text-sm">
+                                    Threshold: <span class="font-semibold">{{ alert.threshold_value }}</span>
+                                    {% if alert.is_active %}
+                                        <span class="ml-2 text-green-400"><i class="fas fa-check-circle"></i> Active</span>
+                                    {% else %}
+                                        <span class="ml-2 text-red-400"><i class="fas fa-pause-circle"></i> Paused</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <div class="flex gap-2">
+                                <form method="post" action="{% url 'toggle_alert' alert.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition" title="{% if alert.is_active %}Pause{% else %}Activate{% endif %}">
+                                        <i class="fas {% if alert.is_active %}fa-pause{% else %}fa-play{% endif %}"></i>
+                                    </button>
+                                </form>
+                                <form method="post" action="{% url 'delete_alert' alert.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg transition" title="Delete" onclick="return confirm('Delete this alert?')">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-12 glass rounded-xl">
+                    <i class="fas fa-bell-slash text-5xl text-white/30 mb-4"></i>
+                    <p class="text-white/70">No alerts yet. Create your first alert above!</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

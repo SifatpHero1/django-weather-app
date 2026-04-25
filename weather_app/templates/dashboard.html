@@ -15,6 +15,23 @@
         </a>
     </div>
 
+    <!-- Alert Notifications -->
+    {% if recent_alerts %}
+        <div class="mb-6 space-y-2">
+            {% for alert in recent_alerts %}
+                <div class="bg-yellow-500/20 border border-yellow-400/50 text-yellow-100 px-4 py-3 rounded-lg flex items-center justify-between">
+                    <div class="flex items-center">
+                        <i class="fas fa-exclamation-triangle mr-3"></i>
+                        <span>
+                            <strong>{{ alert.city }}</strong>: {{ alert.type }} threshold ({{ alert.threshold }}) breached! Current: {{ alert.current_value }}
+                        </span>
+                    </div>
+                    <span class="text-xs opacity-70">{{ alert.timestamp }}</span>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
     {% if not has_cities %}
         <!-- Empty State -->
         <div class="glass rounded-2xl p-12 text-center">

@@ -32,6 +32,7 @@
                 <div class="flex items-center space-x-4">
                     {% if user.is_authenticated %}
                         <a href="{% url 'dashboard' %}" class="text-white/90 hover:text-white font-medium transition">Dashboard</a>
+                        <a href="{% url 'alerts' %}" class="text-white/90 hover:text-white font-medium transition">Alerts</a>
                         <a href="{% url 'settings' %}" class="text-white/90 hover:text-white font-medium transition">Settings</a>
                         <form method="post" action="{% url 'logout' %}" class="inline">
                             {% csrf_token %}
