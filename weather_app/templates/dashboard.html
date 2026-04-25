@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - WeatherApp{% endblock %}
+
+{% block content %}
+<div class="py-8">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-white mb-2">My Weather Dashboard</h1>
+            <p class="text-white/70">Real-time weather for your favorite cities</p>
+        </div>
+        <a href="{% url 'add_city' %}" class="mt-4 md:mt-0 bg-white text-purple-600 px-6 py-3 rounded-xl font-semibold hover:bg-white/90 transition shadow-lg">
+            <i class="fas fa-plus-circle mr-2"></i> Add City
+        </a>
+    </div>
+
+    {% if not has_cities %}
+        <!-- Empty State -->
+        <div class="glass rounded-2xl p-12 text-center">
+            <i class="fas fa-map-marked-alt text-6xl text-white/50 mb-6"></i>
+            <h2 class="text-2xl font-bold text-white mb-3">No Cities Yet</h2>
+            <p class="text-white/70 mb-6">Start building your weather dashboard by adding your first city.</p>
+            <a href="{% url 'add_city' %}" class="inline-block bg-white text-purple-600 px-6 py-3 rounded-xl font-semibold hover:bg-white/90 transition">
+                <i class="fas fa-plus-circle mr-2"></i> Add Your First City
+            </a>
+        </div>
+    {% else %}
+        <!-- Weather Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {% for item in weather_data %}
+                <div class="glass rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition transform hover:-translate-y-1">
+                    <!-- Weather Header -->
+                    <div class="bg-gradient-to-br from-blue-400/30 to-purple-400/30 p-6">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h2 class="text-2xl font-bold text-white">{{ item.city.name }}</h2>
+                                <p class="text-white/70">{{ item.city.country_code }}</p>
+                            </div>
+                            <form method="post" action="{% url 'remove_city' item.city.id %}" class="delete-form" onsubmit="return confirm('Remove {{ item.city.name }}?')">
+                                {% csrf_token %}
+                                <button type="submit" class="text-white/50 hover:text-red-400 transition">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Weather Body -->
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <div class="text-5xl font-bold text-white">
+                                    {{ item.weather.temperature }}°C
+                                </div>
+                                <p class="text-white/70 text-sm mt-1">
+                                    Feels like {{ item.weather.feels_like }}°C
+                                </p>
+                            </div>
+                            <img src="http://openweathermap.org/img/wn/{{ item.weather.icon_code }}@2x.png" 
+                                 alt="{{ item.weather.description }}"
+                                 class="weather-icon w-20 h-20">
+                        </div>
+
+                        <p class="text-white/80 capitalize mb-4">{{ item.weather.description }}</p>
+
+                        <!-- Details -->
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div class="glass rounded-lg p-3 text-center">
+                                <i class="fas fa-tint text-blue-300 mb-1"></i>
+                                <p class="text-white/70 text-xs">Humidity</p>
+                                <p class="text-white font-semibold">{{ item.weather.humidity }}%</p>
+                            </div>
+                            <div class="glass rounded-lg p-3 text-center">
+                                <i class="fas fa-wind text-green-300 mb-1"></i>
+                                <p class="text-white/70 text-xs">Wind</p>
+                                <p class="text-white font-semibold">{{ item.weather.wind_speed }} m/s</p>
+                            </div>
+                            <div class="glass rounded-lg p-3 text-center">
+                                <i class="fas fa-compress-arrows-alt text-purple-300 mb-1"></i>
+                                <p class="text-white/70 text-xs">Pressure</p>
+                                <p class="text-white font-semibold">{{ item.weather.pressure }} hPa</p>
+                            </div>
+                            <div class="glass rounded-lg p-3 text-center">
+                                <i class="fas fa-clock text-yellow-300 mb-1"></i>
+                                <p class="text-white/70 text-xs">Updated</p>
+                                <p class="text-white font-semibold text-xs">{{ item.weather.last_updated|timesince }} ago</p>
+                            </div>
+                        </div>
+
+                        <!-- Refresh Button -->
+                        <form method="post" action="{% url 'refresh_weather' item.city.id %}" class="mt-4">
+                            {% csrf_token %}
+                            <button type="submit" class="w-full bg-white/10 hover:bg-white/20 text-white py-2 rounded-lg transition">
+                                <i class="fas fa-sync-alt mr-2"></i> Refresh
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
